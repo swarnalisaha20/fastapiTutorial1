@@ -25,7 +25,7 @@
 - [x] Install SQLAlchemy (ORM) and asyncpg
 - [x] Connect FastAPI to PostgreSQL
 - [x] Create database models and migrations (We created `database.py`, `models.py`, and used an async lifespan in `main.py` to create tables)
-- [ ] Build CRUD (Create, Read, Update, Delete) APIs
+- [x] Build CRUD (Create, Read, Update, Delete) APIs
 
 ## Phase 3: AI Integration (Gemini)
 - [ ] Get an AI API Key (like Google Gemini)
