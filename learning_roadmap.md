@@ -28,10 +28,10 @@
 - [x] Build CRUD (Create, Read, Update, Delete) APIs
 
 ## Phase 3: AI Integration (Gemini)
-- [ ] Get an AI API Key (like Google Gemini)
-- [ ] Install the AI SDK
-- [ ] Create an API endpoint that talks to the AI
+- [x] Get an AI API Key (like Google Gemini)
+- [x] Install the AI SDK
+- [x] Create an API endpoint that talks to the AI
 
 ## Phase 4: Job-Ready Final Project
-- [ ] Build a "Smart Notes" App that saves data to Postgres and uses AI to summarize/process it.
+- [x] Build a "Smart Notes" App that saves data to Postgres and uses AI to summarize/process it.
 - [ ] Structure the project properly (like a real company does).

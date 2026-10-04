@@ -6,7 +6,10 @@ import models
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-
+from google import genai
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 # Note:
 # In Laravel, if you want something to happen when your application boots up, 
@@ -34,6 +37,31 @@ async def lifespan(app: FastAPI):
 # 2. Add the lifespan to your app
 app = FastAPI(lifespan=lifespan)
 # app = FastAPI()
+
+
+
+#TUTORIAL 3 AI Integration
+# 1. in env
+
+# 2. Create a Pydantic Model to check the incoming user message
+class PromptRequest(BaseModel):
+    message:str
+
+# 3. The AI Route
+@app.post("/ai/chat")
+async def chat_with_ai(request: PromptRequest):
+
+    # Send the user's message to the Gemini AI
+    response = ai_client.models.generate_content(
+        model = 'gemini-3.8-flash',
+        contents=request.message
+    )
+
+    # Return the AI's answer back to the user
+    return {
+        "ai_answer": response.text
+    }
+
 
 
 # Tutorial 2 - CRUD

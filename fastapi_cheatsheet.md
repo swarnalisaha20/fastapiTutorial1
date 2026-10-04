@@ -192,3 +192,56 @@ async def delete_note(note_id: int, db: AsyncSession = Depends(get_db)):
 
 * **What does `await db.refresh(new_note)` do?**
   When you save a new note to PostgreSQL, the database automatically creates an `id` for it. `db.refresh()` tells Python to quickly look at the database and grab that new `id` so your code can use it immediately in the API response.
+
+### 15. AI Integration (Google Gemini)
+To connect your FastAPI app to the AI, first install the package: 
+`pip install google-genai`
+
+Then, use this code to create a chat endpoint:
+```python
+from google import genai
+from pydantic import BaseModel
+
+# 1. Connect to Gemini (Store this key safely!)
+ai_client = genai.Client(api_key="YOUR_API_KEY_HERE")
+
+class PromptRequest(BaseModel):
+    message: str
+
+# 2. Ask the AI a question
+@app.post("/ai/chat")
+async def chat_with_ai(request: PromptRequest):
+    # 'gemini-2.5-flash' is the model name for fast, general tasks
+    response = ai_client.models.generate_content(
+        model='gemini-3.8-flash',
+        contents=request.message,
+    )
+    return {"ai_answer": response.text}
+```
+
+### 16. Building a GenAI Feature (AI + Database)
+Here is how to combine AI and PostgreSQL into one powerful route. In this example, the user only sends text content, the AI automatically generates a title for it, and then we save it all to the database!
+
+```python
+class SmartNoteCreate(BaseModel):
+    content: str
+
+@app.post("/smart-notes/")
+async def create_smart_note(request: SmartNoteCreate, db: AsyncSession = Depends(get_db)):
+    
+    # 1. Ask AI to generate a title
+    prompt = f"Generate a short title for this note: {request.content}"
+    ai_response = ai_client.models.generate_content(
+        model='gemini-3.8-flash',
+        contents=prompt,
+    )
+    generated_title = ai_response.text.strip()
+    
+    # 2. Save the AI's title and User's content to PostgreSQL
+    new_note = models.Note(title=generated_title, content=request.content)
+    db.add(new_note)
+    await db.commit()
+    await db.refresh(new_note)
+    
+    return {"note": new_note}
+```
