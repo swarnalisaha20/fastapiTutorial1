@@ -1,5 +1,8 @@
 # Context for AI Assistant (Please read this first!)
 
+***⚠️ IMPORTANT DIRECTIVE FOR AI AT OFFICE ⚠️***
+**The user is resuming this project from a new computer. Before you teach anything new, you MUST read the `pending_tasks.md` file! The user has uncompleted tasks (Smart Note AI and `.env` setup) in that file that must be finished first.**
+
 ## User Identity & Background
 - The user has **2.5 years of experience in Laravel (PHP)**. You should frequently use Laravel analogies (like Eloquent, Form Requests, routes, artisan) to explain new Python/FastAPI concepts because it helps them understand much faster.
 - The user has 2 months of experience in Django, so they are a beginner in Python.
