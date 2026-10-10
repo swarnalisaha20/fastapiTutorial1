@@ -37,4 +37,4 @@
 
 ## Phase 4: Job-Ready Final Project
 - [x] Build a "Smart Notes" App that saves data to Postgres and uses AI to summarize/process it.
-- [ ] Structure the project properly (like a real company does).
+- [x] Structure the project properly (like a real company does).

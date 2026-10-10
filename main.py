@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Depends
 from contextlib import asynccontextmanager
 from database import engine,get_db
-from pydantic import BaseModel
+# from pydantic import BaseModel
 import models
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from google import genai
 import os
+from routers import notes
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -39,121 +40,153 @@ app = FastAPI(lifespan=lifespan)
 # app = FastAPI()
 
 
+app.include_router(notes.router)
+
+
 
 #TUTORIAL 3 AI Integration
 # 1. in env
+# ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
-# 2. Create a Pydantic Model to check the incoming user message
-class PromptRequest(BaseModel):
-    message:str
 
-# 3. The AI Route
-@app.post("/ai/chat")
-async def chat_with_ai(request: PromptRequest):
+#shift all pydentic models in scemas.py
+# class SmartNoteCreate(BaseModel):
+#     content: str
 
-    # Send the user's message to the Gemini AI
-    response = ai_client.models.generate_content(
-        model = 'gemini-3.8-flash',
-        contents=request.message
-    )
+#shift all Note related routes to APIRouter note.py
+# @app.post("/smart-notes")
+# async def create_smart_note(request: SmartNoteCreate, db: AsyncSession = Depends(get_db)):
+#     prompt = f"Please read this note and generate a short, 3-word title for it. Here is the note {request.content}"    
+#     ai_response = ai_client.models.generate_content(
+#         model='gemini-3.8-flash',
+#         contents = prompt,
+#     )
 
-    # Return the AI's answer back to the user
-    return {
-        "ai_answer": response.text
-    }
+#     generated_title = ai_response.text.strip()
+
+#     new_note = models.Note(title=generated_title, content=request.content)
+#     db.add(new_note)
+
+#     await db.commit()
+#     await db.refresh(new_note)
+
+#     return {
+#         "message": "Note craeted successfully",
+#         "note": new_note 
+#     }
+
+
+#Create a Pydantic Model to check the incoming user message like validator
+# class PromptRequest(BaseModel):
+#     message:str
+
+# # The AI Route - take simple response from AI
+# @app.post("/ai/chat")
+# async def chat_with_ai(request: PromptRequest):
+
+#     # Send the user's message to the Gemini AI
+#     response = ai_client.models.generate_content(
+#         model = 'gemini-3.8-flash',
+#         contents=request.message
+#     )
+
+#     # Return the AI's answer back to the user
+#     return {
+#         "ai_answer": response.text
+#     }
 
 
 
 # Tutorial 2 - CRUD
 #BaseModel is the Pydentic Model for form validation
 #(Like a Laravel Form Request to check data)
-class NoteCreate(BaseModel):
-    title: str
-    content: str
+# class NoteCreate(BaseModel):
+#     title: str
+#     content: str
 
 
-@app.post("/notes/")
-async def create_note(note : NoteCreate, db: AsyncSession = Depends(get_db)):
-    #here note = NoteCreate like setting how json data should be in request body
-    new_note = models.Note(title=note.title, content=note.content)
+# @app.post("/notes/")
+# async def create_note(note : NoteCreate, db: AsyncSession = Depends(get_db)):
+#     #here note = NoteCreate like setting how json data should be in request body
+#     new_note = models.Note(title=note.title, content=note.content)
 
-    #e.g.-add to shoping card & save to database(Commit)
-    db.add(new_note)
-    await db.commit()  #like $note->save() but for await code pauses after commit wait for response
-    #to use await, we need to use keyword "async" 
-    #Note: only this user's code is waiting. The rest of your web server is still awake and helping other users!
+#     #e.g.-add to shoping card & save to database(Commit)
+#     db.add(new_note)
+#     await db.commit()  #like $note->save() but for await code pauses after commit wait for response
+#     #to use await, we need to use keyword "async" 
+#     #Note: only this user's code is waiting. The rest of your web server is still awake and helping other users!
 
-    await db.refresh(new_note)
-    return {
-        "message": "Note created successfully!",
-        "note": new_note
-    }
-
-
-@app.get("/notes/")
-async def get_notes(db: AsyncSession = Depends(get_db)):
-    #like Select * from notes
-    query = select(models.Note)
-
-    # Execute the query
-    result = await db.execute(query)
-
-    #Grab all the results and turn them into a normal list
-    notes = result.scalars().all() #scalars helps to redesign data structure
-    return {"notes": notes}
+#     await db.refresh(new_note)
+#     return {
+#         "message": "Note created successfully!",
+#         "note": new_note
+#     }
 
 
-@app.get("/notes/{note_id}")
-async def get_single_note(note_id:int, db:AsyncSession = Depends(get_db)):
-    query = select(models.Note).where(models.Note.id==note_id)
-    result = await db.execute(query) #Execute the query
+# @app.get("/notes/")
+# async def get_notes(db: AsyncSession = Depends(get_db)):
+#     #like Select * from notes
+#     query = select(models.Note)
 
-    #Strip the wrapper using scalar and grab just the FIRST note it finds
-    note = result.scalar_one_or_none()
+#     # Execute the query
+#     result = await db.execute(query)
 
-    if note is None:
-        return {"error": "No data found"}
-
-    return {"note": note}
-
-
-@app.put("/notes/{note_id}")
-async def update_note(note_id: int, update_data:NoteCreate, db:AsyncSession=Depends(get_db)):
-    query = select(models.Note).where(models.Note.id == note_id)
-    result =  await db.execute(query)
-    note = result.scalar_one_or_none()
-
-    if note is None:
-        return {"error": "No data found"}
-
-    #Change the data 
-    # (We are borrowing our NoteCreate class to validate the new incoming JSON)
-    note.title = update_data.title
-    note.content = update_data.content
-
-    # Save the changes to the database
-    await db.commit()
-    await db.refresh(note)
-
-    return {"message": "Note updated successfully!",
-            "note": note}
+#     #Grab all the results and turn them into a normal list
+#     notes = result.scalars().all() #scalars helps to redesign data structure
+#     return {"notes": notes}
 
 
-@app.delete("/notes/{note_id}")
-async def delete_note(note_id:int, db:AsyncSession=Depends(get_db)):
-    query = select(models.Note).where(models.Note.id == note_id)
-    result = await db.execute(query)
-    note = result.scalar_one_or_none()
+# @app.get("/notes/{note_id}")
+# async def get_single_note(note_id:int, db:AsyncSession = Depends(get_db)):
+#     query = select(models.Note).where(models.Note.id==note_id)
+#     result = await db.execute(query) #Execute the query
 
-    if note is None:
-        return {"error": "No data found"}
+#     #Strip the wrapper using scalar and grab just the FIRST note it finds
+#     note = result.scalar_one_or_none()
 
-    #Tell the shopping cart to delete it
-    await db.delete(note)
-    # Save the changes to the database
-    await db.commit()
+#     if note is None:
+#         return {"error": "No data found"}
 
-    return {"message": "Note deleted successfully!"}
+#     return {"note": note}
+
+
+# @app.put("/notes/{note_id}")
+# async def update_note(note_id: int, update_data:NoteCreate, db:AsyncSession=Depends(get_db)):
+#     query = select(models.Note).where(models.Note.id == note_id)
+#     result =  await db.execute(query)
+#     note = result.scalar_one_or_none()
+
+#     if note is None:
+#         return {"error": "No data found"}
+
+#     #Change the data 
+#     # (We are borrowing our NoteCreate class to validate the new incoming JSON)
+#     note.title = update_data.title
+#     note.content = update_data.content
+
+#     # Save the changes to the database
+#     await db.commit()
+#     await db.refresh(note)
+
+#     return {"message": "Note updated successfully!",
+#             "note": note}
+
+
+# @app.delete("/notes/{note_id}")
+# async def delete_note(note_id:int, db:AsyncSession=Depends(get_db)):
+#     query = select(models.Note).where(models.Note.id == note_id)
+#     result = await db.execute(query)
+#     note = result.scalar_one_or_none()
+
+#     if note is None:
+#         return {"error": "No data found"}
+
+#     #Tell the shopping cart to delete it
+#     await db.delete(note)
+#     # Save the changes to the database
+#     await db.commit()
+
+#     return {"message": "Note deleted successfully!"}
 
 # Tutorial 1
 # app = FastAPI()
