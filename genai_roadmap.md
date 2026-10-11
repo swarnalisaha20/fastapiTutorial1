@@ -3,9 +3,9 @@
 *Note to AI Assistant: Remember to keep explanations step-by-step and use simple English/Laravel analogies!*
 
 ## Phase 1: Advanced LLM Control
-- [ ] Learn "System Prompts" (Giving the AI a specific personality, like a strict teacher or code reviewer).
-- [ ] Learn Structured Output (Forcing the AI to return perfect JSON data instead of plain text).
-- [ ] Learn "Few-Shot Prompting" (Giving the AI examples to make it much smarter).
+- [x] Learn "System Prompts" (Giving the AI a specific personality, like a strict teacher or code reviewer).
+- [x] Learn Structured Output (Forcing the AI to return perfect JSON data instead of plain text).
+- [x] Learn "Few-Shot Prompting" (Giving the AI examples to make it much smarter).
 
 ## Phase 2: RAG (Retrieval-Augmented Generation)
 - [ ] Understand Vector Databases (Installing the `pgvector` extension in PostgreSQL).

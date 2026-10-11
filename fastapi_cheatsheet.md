@@ -245,3 +245,73 @@ async def create_smart_note(request: SmartNoteCreate, db: AsyncSession = Depends
     
     return {"note": new_note}
 ```
+
+### 17. Project Architecture (Routers & Schemas)
+In production, we separate files just like Laravel separates Models, Controllers, and Requests:
+* **`models.py`**: Database tables (like Laravel Eloquent Models).
+* **`schemas.py`**: Pydantic models (like Laravel Form Requests) for validating incoming and outgoing JSON.
+* **`routers/notes.py`**: Grouped endpoints using `APIRouter()` (like Laravel Controllers).
+* **`main.py`**: Boots the app and includes routers with `app.include_router(notes.router)`.
+
+### 18. System Prompts (Giving the AI a Role)
+Tell the AI who it is and how to behave before it answers questions:
+```python
+from google.genai import types
+
+ai_config = types.GenerateContentConfig(
+    system_instruction="You are a grumpy old pirate. Answer using pirate slang."
+)
+
+response = ai_client.models.generate_content(
+    model='gemini-3.8-flash',
+    contents=request.message,
+    config=ai_config
+)
+```
+
+### 19. Structured Output (Forcing the AI to Return JSON)
+Force the AI to output valid JSON matching a Pydantic schema:
+```python
+# 1. Define desired JSON structure
+class NoteAnalysis(BaseModel):
+    summary: str
+    sentiment: str
+    category: str
+
+# 2. Force it in config
+ai_config = types.GenerateContentConfig(
+    response_mime_type="application/json",
+    response_schema=NoteAnalysis
+)
+
+response = ai_client.models.generate_content(
+    model='gemini-3.8-flash',
+    contents=prompt,
+    config=ai_config
+)
+# response.text is guaranteed to be a valid JSON string!
+```
+
+### 20. Few-Shot Prompting (Giving Examples)
+Teach the AI by providing 2–3 examples of `Input -> Output` in the prompt before the real question:
+```python
+prompt = """
+Classify customer tickets:
+
+Example 1:
+Input: "Where is my invoice?"
+Output: Urgency=LOW, Department=BILLING
+
+Example 2:
+Input: "Database server crashed!"
+Output: Urgency=CRITICAL, Department=DATABASE
+
+Now classify:
+Input: "Payment failed and card was charged!"
+"""
+```
+
+### 21. Common AI Terminology & Errors
+* **`response_mime_type="application/json"`**: MIME type is the official web label for file formats. Telling the AI this MIME type forces it to speak in JSON instead of plain English.
+* **`503 UNAVAILABLE`**: Not a bug in your code. Means Google's free servers have a temporary traffic spike. Wait 5 seconds and retry.
+* **Forgot `return` in route**: If an endpoint returns `null`, check if you forgot the `return {"key": data}` line at the end of your function!

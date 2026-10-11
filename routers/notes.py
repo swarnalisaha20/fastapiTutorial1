@@ -6,6 +6,7 @@ import models
 import schemas
 from google import genai
 import os
+from google.genai import types
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -19,8 +20,102 @@ router = APIRouter(
 # AI Connection
 ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+@router.post("/ai/classify-ticket")
+async def classify_ticket(request: schemas.SmartNoteCreate):
+    #We prepare "Few-shot" examples (showing the AI how to think)
+    few_shot_prompt=f"""
+You are a senior tech support triage agent. Classify ticktes bases on these examples:
 
-#*****as now we are useing router so rep
+Example 1:
+Input: "Where can I download my last months's invoice PDF?"
+Output: Urgency=LOW,Department=BILLING, Reason=Normal invoice download request.
+Example 2:
+Input: "Production database connection refused! All customers are seeing error 500!"
+Output: Urgency=CRITICAL, Department=DATABASE, Reason=Production database outage affecting users.
+Example 3:
+Input: "The submit button has a small typo on the signup page."
+Output: Urgency=LOW, Department=BACKEND, Reason=Minor UI typo with no business disruption.
+
+now classify this new customer ticket:
+Input: "{request.content}"
+"""
+
+    #Force it into our clean Pydantic schema
+    ai_config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=schemas.TicketClassification
+    )
+
+    response = ai_client.models.generate_content(
+        model='gemini-3.8-flash',
+        contents=few_shot_prompt,
+        config=ai_config
+    )
+
+    return {"Ticket": response.text}
+
+
+@router.post("/ai/analyze")
+async def analyze_note(request: schemas.SmartNoteCreate):
+    #defining -to return response as json
+    #forcing Gemini to use Pydantic schema as JSON
+    ai_config = types.GenerateContentConfig(
+        response_mime_type="application/json",
+        response_schema=schemas.NoteAnalysis
+    )
+
+    response = ai_client.models.generate_content(
+        model='gemini-3.8-flash',
+        contents=f"Analyze this text and extract information: {request.content}",
+        config=ai_config
+    )
+
+    # e.g
+    # "content": "I had a terrible day today. My Python code kept throwing 500 errors and my server crashed twice at work."
+
+    # Response body
+    # Download
+    # {
+    # "Analysis": "{\"summery\":\"The user experienced a frustrating day at work due to Python 500 errors and multiple server crashes.\",\"sentiment\":\"Negative\",\"category\":\"Software Development\",\"keyword\":[\"Python\",\"500 errors\",\"server crashed\",\"work\",\"errors\"]}"
+    # }
+
+
+    # response.text is guaranteed to be a valid JSON string!
+    return {"Analysis": response.text}
+
+# The AI Route - take simple response from AI
+@router.post("/ai/chat")
+async def chat_with_ai(request: schemas.PromptRequest):
+
+    #create a secret system instruction
+    ai_config = types.GenerateContentConfig(
+        system_instruction="You are a grumpy old pirate. You always complain about tge modern internet before answering questions. Use pirate word like 'Arrr' and 'matey'."
+    )
+    # Send the user's message to the Gemini AI & the the Sectet configaration
+    response = ai_client.models.generate_content(
+        model = 'gemini-3.8-flash',
+        contents=request.message,
+        config=ai_config
+    )
+
+    # Return the AI's answer back to the user
+    return {
+        "ai_answer": response.text
+    }
+# async def chat_with_ai(request: schemas.PromptRequest):
+
+#     # Send the user's message to the Gemini AI
+#     response = ai_client.models.generate_content(
+#         model = 'gemini-3.8-flash',
+#         contents=request.message
+#     )
+
+#     # Return the AI's answer back to the user
+#     return {
+#         "ai_answer": response.text
+#     }
+
+
 @router.post("/smart-notes")
 # @app.post("/smart-notes")
 async def create_smart_note(request: schemas.SmartNoteCreate, db: AsyncSession = Depends(get_db)):
@@ -41,22 +136,6 @@ async def create_smart_note(request: schemas.SmartNoteCreate, db: AsyncSession =
     return {
         "message": "Note craeted successfully",
         "note": new_note 
-    }
-
-
-# The AI Route - take simple response from AI
-@router.post("/ai/chat")
-async def chat_with_ai(request: schemas.PromptRequest):
-
-    # Send the user's message to the Gemini AI
-    response = ai_client.models.generate_content(
-        model = 'gemini-3.8-flash',
-        contents=request.message
-    )
-
-    # Return the AI's answer back to the user
-    return {
-        "ai_answer": response.text
     }
 
 
