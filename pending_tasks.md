@@ -1,84 +1,65 @@
-# Pending Tasks to Finish
+# Current & Pending Tasks: Phase 2 (RAG & Embeddings)
 
-You still need to add the AI "Smart Notes" feature and hide your API key before pushing to GitHub. Here is exactly what to do step-by-step when you are ready to continue:
+*Note to AI Assistant: The user has completed FastAPI basics, CRUD, and GenAI Phase 1 (System Prompts, Structured Output, Few-Shot). They are now learning Phase 2: RAG and Embeddings. Continue from where they left off below in simple English and step-by-step!*
 
-### 1. Add the Smart Note Code
-Open `main.py` and paste this code at the bottom. This will automatically generate a title using AI before saving it to PostgreSQL!
+---
 
+### 📖 Concept: What is an "Embedding"? (The Core of AI)
+Computers do not understand words; they only understand numbers.
+An **Embedding** is a list of decimal numbers (called a **Vector**) that represents the **meaning** of a sentence.
+
+Example:
+* `"Puppy"` ➔ `[0.82, -0.15, 0.94, ...]`
+* `"Dog"`   ➔ `[0.81, -0.14, 0.93, ...]`
+* `"Airplane"` ➔ `[-0.45, 0.90, -0.12, ...]`
+
+Because "Puppy" and "Dog" mean the same thing, their numbers are almost identical! This allows us to do **Semantic Search** (searching by meaning instead of exact keywords).
+
+---
+
+## 📋 Pending Tasks Checklist
+
+### Task 1: Test Generating an Embedding (CURRENT STEP)
+1. Add this test route to `routers/notes.py`:
 ```python
-# 1. New Pydantic Model (User only sends content now!)
-class SmartNoteCreate(BaseModel):
-    content: str
-
-# 2. The Smart Note Route
-@app.post("/smart-notes/")
-async def create_smart_note(request: SmartNoteCreate, db: AsyncSession = Depends(get_db)):
-    
-    # Step A: Ask the AI to generate a title
-    prompt = f"Please read this note and generate a short, 3-word title for it. Here is the note: {request.content}"
-    
-    ai_response = ai_client.models.generate_content(
-        model='gemini-3.8-flash',
-        contents=prompt,
+@router.post("/ai/embed")
+async def create_embedding(request: schemas.SmartNoteCreate):
+    response = ai_client.models.embed_content(
+        model='text-embedding-004',
+        contents=request.content
     )
-    
-    # Clean up the AI's answer (remove extra spaces or newlines)
-    generated_title = ai_response.text.strip()
-    
-    # Step B: Save it to PostgreSQL! (Using the AI's title and the User's content)
-    new_note = models.Note(title=generated_title, content=request.content)
-    db.add(new_note)
-    await db.commit()
-    await db.refresh(new_note)
-    
+    vector = response.embeddings[0].values
     return {
-        "message": "Smart Note saved successfully!", 
-        "note": new_note
+        "text": request.content,
+        "total_numbers": len(vector),
+        "first_5_numbers": vector[:5]
     }
 ```
+2. Open Swagger UI (`/docs`) and hit `POST /notes/ai/embed`.
+3. Give any sample content like:
+```json
+{
+  "content": "FastAPI and PostgreSQL are great for building GenAI applications."
+}
+```
+4. Observe the `total_numbers` (Gemini returns 768 numbers for every sentence!).
 
 ---
 
-### 2. Hide Your API Key (Using a `.env` file)
-Never upload your API key to GitHub! We will use the exact same tool Laravel uses (`.env`).
-
-**A. Install the package:**
-Stop your server and run this command:
-```powershell
-pip install python-dotenv
-```
-
-**B. Create the `.env` file:**
-Create a new file named exactly `.env` in your folder. Paste your key inside it:
-```env
-GEMINI_API_KEY=your_actual_long_api_key_here
-```
-
-**C. Update `main.py` to read the key:**
-At the top of `main.py`, add these imports:
-```python
-import os
-from dotenv import load_dotenv
-
-load_dotenv()  # Tells Python to read the .env file!
-```
-
-Change your AI client code so it grabs the hidden key securely:
-```python
-ai_client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-```
+### Task 2: Understand pgvector in PostgreSQL
+* Standard SQL stores strings, integers, and booleans.
+* To store a list of 768 numbers (Vectors) and search them at lightning speed, PostgreSQL has an official extension called **`pgvector`**.
+* We will install `pgvector` in PostgreSQL and add a `vector` column to our `notes` table.
 
 ---
 
-### 3. Push to GitHub
-Now that the key is safe, save your work!
-```powershell
-git add .
-git commit -m "Added Smart Notes and hidden API key"
-git push
-```
+### Task 3: Store Embeddings in the Database
+* Whenever a user creates a note, we will automatically generate its Embedding numbers and save them inside PostgreSQL alongside the title and content.
 
 ---
 
-### 4. The Very Last Step! (Project Structure)
-When you finish all of the above, tell me! We will do the final step of our roadmap: splitting `main.py` into separate folders (like `routers/`, `schemas/`, `models/`) just like a real Laravel app!
+### Task 4: Build the "Chat with My Notes" Feature (Full RAG)
+* User asks: *"What was that problem I had with the server?"*
+* Step 1: Turn the user's question into embedding numbers.
+* Step 2: Query PostgreSQL to find the closest matching note using vector math.
+* Step 3: Pass that note to Gemini to write a smart, accurate answer!

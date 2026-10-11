@@ -1,40 +1,53 @@
-# Context for AI Assistant (Please read this first!)
+# Master Learning Roadmap & Context for AI Assistant
 
-***⚠️ IMPORTANT DIRECTIVE FOR AI AT OFFICE ⚠️***
-**The user is resuming this project from a new computer. Before you teach anything new, you MUST read the `pending_tasks.md` file! The user has uncompleted tasks (Smart Note AI and `.env` setup) in that file that must be finished first.**
-
-## User Identity & Background
-- The user has **2.5 years of experience in Laravel (PHP)**. You should frequently use Laravel analogies (like Eloquent, Form Requests, routes, artisan) to explain new Python/FastAPI concepts because it helps them understand much faster.
-- The user has 2 months of experience in Django, so they are a beginner in Python.
-- Their ultimate goal is to become **job ready as a GenAI developer** using FastAPI + PostgreSQL + AI Integration.
-
-## Teaching Style Requirements (STRICT RULES FOR AI)
-1. **Step-by-step only:** Always tell the user exactly what to do one step at a time. Do not give massive blocks of code or skip ahead.
-2. **Small & Easy English:** Explain things very simply, using basic English.
-3. **Wait for completion:** After giving a step, ask the user to confirm they completed it before giving the next step.
+***⚠️ IMPORTANT DIRECTIVE FOR AI ON ANY COMPUTER ⚠️***
+**The user is a Laravel developer transitioning into a professional GenAI Developer using FastAPI + PostgreSQL + LLMs. You MUST follow these rules:**
+1. Always teach **step-by-step** in **small, easy English**.
+2. Frequently use **Laravel analogies** (Eloquent, Migrations, Form Requests, Controllers) to explain new Python/FastAPI concepts.
+3. Stop and wait for the user to complete each step before giving the next one.
+4. **Current Status:** The user has completed FastAPI Basics, PostgreSQL CRUD, Project Refactoring, and GenAI Phase 1 (System Prompts, Structured Output, Few-Shot Prompting).
+5. **Resume point:** The user is currently on **Phase 2: RAG & Embeddings (Task 1: Testing `/notes/ai/embed`, then Task 2: pgvector setup)**. See `pending_tasks.md` for the exact code and next steps!
 
 ---
 
-# FastAPI + AI Integration Roadmap
-*Dear AI: Below is the progress so far. Please resume teaching starting at the first unchecked box!*
+## 🧭 Master Progress Tracker
 
-## Phase 1: FastAPI Basics
-- [x] Create a virtual environment
-- [x] Install FastAPI and Uvicorn
-- [x] Create a "Hello World" API
-- [x] Understand Pydantic (Data Validation)
+### ✅ Module 1: FastAPI Fundamentals
+- [x] Create virtual environment and install FastAPI/Uvicorn
+- [x] Basic routing (`@app.get("/")`)
+- [x] Pydantic data validation (`BaseModel`)
+- [x] Swagger auto-documentation (`/docs`)
 
-## Phase 2: PostgreSQL Database
-- [x] Install SQLAlchemy (ORM) and asyncpg
-- [x] Connect FastAPI to PostgreSQL
-- [x] Create database models and migrations (We created `database.py`, `models.py`, and used an async lifespan in `main.py` to create tables)
-- [x] Build CRUD (Create, Read, Update, Delete) APIs
+### ✅ Module 2: PostgreSQL Database & CRUD
+- [x] Connect async database (`asyncpg` + `SQLAlchemy`)
+- [x] Create database models (`models.py`)
+- [x] Auto-table creation with modern `lifespan` event
+- [x] Full CRUD operations (Create, Read all, Read by ID, Update, Delete)
+- [x] Database dependency injection with `Depends(get_db)`
 
-## Phase 3: AI Integration (Gemini)
-- [x] Get an AI API Key (like Google Gemini)
-- [x] Install the AI SDK
-- [x] Create an API endpoint that talks to the AI
+### ✅ Module 3: Production Project Refactoring
+- [x] Separate Pydantic schemas into `schemas.py`
+- [x] Separate endpoints into `routers/notes.py` using `APIRouter`
+- [x] Secure API keys using `.env` and `python-dotenv`
+- [x] Clean, scalable architecture matching real-world company standards
 
-## Phase 4: Job-Ready Final Project
-- [x] Build a "Smart Notes" App that saves data to Postgres and uses AI to summarize/process it.
-- [x] Structure the project properly (like a real company does).
+### ✅ Module 4: GenAI Phase 1 (LLM Control)
+- [x] Connect Google Gemini API (`gemini-3.8-flash`)
+- [x] System Prompts / Instructions (giving AI roles & personalities)
+- [x] Structured Output (forcing AI to return valid Pydantic JSON)
+- [x] Few-Shot Prompting (training the model with input/output examples)
+
+---
+
+### ⏳ Module 5: GenAI Phase 2 (RAG & Embeddings) — CURRENT FOCUS
+- [ ] **Task 1:** Test text embeddings using `text-embedding-004` (Route: `POST /notes/ai/embed`)
+- [ ] **Task 2:** Install `pgvector` in PostgreSQL (`CREATE EXTENSION vector;`) and in Python (`pip install pgvector`)
+- [ ] **Task 3:** Add vector column to `models.py` and store embeddings in PostgreSQL
+- [ ] **Task 4:** Build "Semantic Search / Chat with My Notes" (Full RAG endpoint)
+
+---
+
+### 🔮 Module 6: GenAI Phase 3 (AI Agents & Function Calling) — UPCOMING
+- [ ] Understand Function Calling / Tools
+- [ ] Create Python tools the AI can execute autonomously (e.g. weather search, database lookups)
+- [ ] Build a fully autonomous GenAI Assistant

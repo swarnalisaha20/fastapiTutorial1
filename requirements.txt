@@ -1,0 +1,7 @@
+fastapi[all]
+sqlalchemy[asyncio]
+asyncpg
+google-genai
+python-dotenv
+greenlet
+pgvector
