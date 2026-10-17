@@ -315,3 +315,50 @@ Input: "Payment failed and card was charged!"
 * **`response_mime_type="application/json"`**: MIME type is the official web label for file formats. Telling the AI this MIME type forces it to speak in JSON instead of plain English.
 * **`503 UNAVAILABLE`**: Not a bug in your code. Means Google's free servers have a temporary traffic spike. Wait 5 seconds and retry.
 * **Forgot `return` in route**: If an endpoint returns `null`, check if you forgot the `return {"key": data}` line at the end of your function!
+
+### 22. Embeddings (The Heart of Vector Search)
+* **What is an Embedding?**
+  Computers cannot understand the meaning of words, only numbers. An Embedding turns a sentence into a list of numbers (a "Vector").
+  Example: `"Puppy"` and `"Dog"` will have almost identical numbers, while `"Airplane"` will have completely different numbers.
+* **Why use Embeddings over SQL `LIKE '%word%'`?**
+  SQL `LIKE` only matches exact spelling. Embeddings match **meaning**! A search for `"vehicle issue"` will find notes about `"broken car"`, even with zero matching words.
+* **Generating Embeddings in Python:**
+  We use Google's `gemini-embedding-001` model:
+  ```python
+  response = ai_client.models.embed_content(
+      model='gemini-embedding-001',
+      contents="Your text here"
+  )
+  vector = response.embeddings[0].values  # Returns 3,072 numbers!
+  ```
+
+### 23. PostgreSQL + `pgvector` (Vector Database)
+* **Why do we need `pgvector`?**
+  Default PostgreSQL only understands normal types (`INT`, `VARCHAR`). It doesn't know what a 3,072-number array is or how to compare them.
+* **What is `CREATE EXTENSION IF NOT EXISTS vector;`?**
+  Just like installing a PHP/Laravel extension or Composer package, this SQL command turns on the pgvector plugin inside your PostgreSQL database so it can store `vector(3072)` columns and run ultra-fast vector math.
+* **What to do if `extension 'vector' is not available` on Windows?**
+  Windows doesn't include the compiled C files by default. You copy the pre-compiled `vector.dll` into `PostgreSQL/17/lib` and the `vector.control` / `.sql` files into `PostgreSQL/17/share/extension`.
+* **Adding the Vector Column in SQLAlchemy (`models.py`):**
+  ```python
+  from pgvector.sqlalchemy import Vector
+
+  class Note(Base):
+      __tablename__ = "notes"
+      id = Column(Integer, primary_key=True)
+      title = Column(String(100))
+      content = Column(Text)
+      embedding = Column(Vector(3072), nullable=True)  # Stores 3072 numbers!
+  ```
+* **Adding the Column in pgAdmin:**
+  ```sql
+  ALTER TABLE notes ADD COLUMN IF NOT EXISTS embedding vector(3072);
+  ```
+
+### 24. Debugging & Common Errors (Embeddings)
+* **`404 NOT_FOUND: models/text-embedding-004 not found`:**
+  Google deprecated older embedding model names in the new SDK. Use `gemini-embedding-001` instead.
+* **`vector[5]` vs `vector[:5]` in Python:**
+  `vector[5]` gets only ONE number (the 6th item). `vector[:5]` gets a **slice** (the first 5 numbers).
+* **Order of lines matters in Python:**
+  Always initialize `ai_client = genai.Client(...)` **above** any route functions that use `ai_client`.

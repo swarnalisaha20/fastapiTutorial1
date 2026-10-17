@@ -20,6 +20,28 @@ router = APIRouter(
 # AI Connection
 ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
+
+#Learning Embedding
+@router.post("/ai/embed")
+async def create_embadding(request: schemas.SmartNoteCreate):
+
+    #ask google to turn our text into numbers
+    respose = ai_client.models.embed_content(
+        model='gemini-embedding-001',
+        contents=request.content
+    )
+
+    #grav the list of numbers
+    vector = respose.embeddings[0].values
+
+    return {
+        "text": request.content,
+        "total_numbers": len(vector),
+        #just show the first 5
+        "first_5_numbers": vector[:5]
+    }
+
+
 @router.post("/ai/classify-ticket")
 async def classify_ticket(request: schemas.SmartNoteCreate):
     #We prepare "Few-shot" examples (showing the AI how to think)
@@ -141,8 +163,23 @@ async def create_smart_note(request: schemas.SmartNoteCreate, db: AsyncSession =
 
 @router.post("/notes/")
 async def create_note(note : schemas.NoteCreate, db: AsyncSession = Depends(get_db)):
+    embed_response = ai_client.models.embed_content(
+        model='gemini-embedding-001',
+        contents=note.content
+    )
+
+    vector = embed_response.embeddings[0].values
+    
+
+    #first simple version 
+    # without storing embedding, next just added code to store pgembedding
     #here note = NoteCreate like setting how json data should be in request body
-    new_note = models.Note(title=note.title, content=note.content)
+    new_note = models.Note(
+        title=note.title, 
+        content=note.content,
+        #-------->our new pgvector column
+        embedding=vector
+        )
 
     #e.g.-add to shoping card & save to database(Commit)
     db.add(new_note)
@@ -152,8 +189,10 @@ async def create_note(note : schemas.NoteCreate, db: AsyncSession = Depends(get_
 
     await db.refresh(new_note)
     return {
-        "message": "Note created successfully!",
-        "note": new_note
+        "message": "Note created successfully with AI Vector Embedding!",
+        # "note": new_note,
+        "id": new_note.id,
+        "title": new_note.title,
     }
 
 
