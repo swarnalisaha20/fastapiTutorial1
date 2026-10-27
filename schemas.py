@@ -30,3 +30,7 @@ class TicketClassification(BaseModel):
     urgency: str
     department: str
     reason: str
+
+
+class SearchQuery(BaseModel):
+    question: str

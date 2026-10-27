@@ -43,7 +43,7 @@
 - [x] **Task 1:** Test text embeddings using `gemini-embedding-001` (Route: `POST /notes/ai/embed`)
 - [x] **Task 2:** Install `pgvector` in PostgreSQL (`CREATE EXTENSION vector;`) and in Python (`pip install pgvector`)
 - [x] **Task 3:** Add vector column to `models.py` and store embeddings in PostgreSQL
-- [ ] **Task 4:** Build "Semantic Search / Chat with My Notes" (Full RAG endpoint)
+- [x] **Task 4:** Build "Semantic Search / Chat with My Notes" (Full RAG endpoint)
 
 ---
 

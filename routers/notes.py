@@ -21,6 +21,71 @@ router = APIRouter(
 ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
+@router.post("/ai/ask-notes")
+async def ask_my_notes(query_data: schemas.SearchQuery, db: AsyncSession=Depends(get_db)):
+
+    # -------------------------------------------------------------
+    # STEP 1: RETRIEVE (Vector Search in PostgreSQL)
+    # -------------------------------------------------------------
+    # 1a. Turn the user's question into 3,072 numbers
+    question_embed = ai_client.models.embed_content(
+        model='gemini-embedding-001',
+        contents=query_data.question
+    )
+    question_vector = question_embed.embeddings[0].values
+
+    # 1b. Ask PostgreSQL: "Find the 2 notes closest in meaning to this question!"
+    query = (
+        select(models.Note)
+        .where(models.Note.embedding.isnot(None))
+        .order_by(models.Note.embedding.cosine_distance(question_vector))
+        .limit(2)
+    )
+    result=await db.execute(query)
+    matching_notes = result.scalars().all()
+
+    if not matching_notes:
+        return {"answer": "No relevant notes found!"}
+
+    # -------------------------------------------------------------
+    # STEP 2: AUGMENT (Combine user question + retrieved notes)
+    # -------------------------------------------------------------
+    # Build a clean summary of the private notes retrieved from DB
+    notes_context = "\n\n".join([f"Title: {n.title}\nContent: {n.content}" for n in matching_notes])
+
+    prompt = f"""
+    You are a helpful assistant. Answer the user's question using ONLY the provided private notes below.
+    If the answer cannot be found in the notes, say "I cannot find this in your notes."
+
+    --- PRIVATE NOTES FROM DATABASE ---
+    {notes_context}
+    -----------------------------------
+
+    User Question: {query_data.question}
+    """
+
+    # STEP 3: GENERATE (Gemini reads your DB notes and answers!)
+    response = ai_client.models.generate_content(
+        model='gemini-3.8-flash',
+        contents = prompt
+    )
+
+    return {
+        "question": query_data.question, 
+        "retrived_notes": [n.title for n in matching_notes],
+        "ai_answe": response.text.strip()
+    }
+
+    # {
+    # "question": "What automobile issues did I experience?",
+    # "retrived_notes": [
+    #     "Car Problem",
+    #     "Grocery Shopping"
+    # ],
+    # "ai_answe": "Based on your notes, your vehicle broke down on the highway because the engine overheated."
+    # }
+
+
 #Learning Embedding
 @router.post("/ai/embed")
 async def create_embadding(request: schemas.SmartNoteCreate):
@@ -163,6 +228,7 @@ async def create_smart_note(request: schemas.SmartNoteCreate, db: AsyncSession =
 
 @router.post("/notes/")
 async def create_note(note : schemas.NoteCreate, db: AsyncSession = Depends(get_db)):
+     # Ask Gemini to generate the 3,072 embedding numbers for the note's content
     embed_response = ai_client.models.embed_content(
         model='gemini-embedding-001',
         contents=note.content
@@ -171,6 +237,7 @@ async def create_note(note : schemas.NoteCreate, db: AsyncSession = Depends(get_
     vector = embed_response.embeddings[0].values
     
 
+    # Save title, content, AND the vector embedding in PostgreSQL!
     #first simple version 
     # without storing embedding, next just added code to store pgembedding
     #here note = NoteCreate like setting how json data should be in request body

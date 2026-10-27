@@ -362,3 +362,28 @@ Input: "Payment failed and card was charged!"
   `vector[5]` gets only ONE number (the 6th item). `vector[:5]` gets a **slice** (the first 5 numbers).
 * **Order of lines matters in Python:**
   Always initialize `ai_client = genai.Client(...)` **above** any route functions that use `ai_client`.
+
+### 25. RAG (Retrieval-Augmented Generation)
+* **What is RAG?**
+  Giving an LLM access to private, live company/user data without retraining the model.
+* **The 3 Steps of RAG:**
+  1. **R (Retrieve):** Convert user query to an embedding vector, then query PostgreSQL (`pgvector`) to find the most semantically relevant records using Cosine Distance.
+  2. **A (Augment):** Inject the retrieved records into the prompt as private context.
+  3. **G (Generate):** Ask the LLM to answer the user query based **strictly** on the injected context.
+* **Vector Distance in SQLAlchemy (`pgvector`):**
+  Use `.cosine_distance(question_vector)`:
+  ```python
+  query = (
+      select(models.Note)
+      .where(models.Note.embedding.isnot(None))
+      .order_by(models.Note.embedding.cosine_distance(question_vector))
+      .limit(2)
+  )
+  result = await db.execute(query)
+  matching_notes = result.scalars().all()
+  ```
+* **Why RAG is better than fine-tuning:**
+  * Zero expensive training costs.
+  * Instant updates: as soon as a user adds/updates a note in DB, the AI immediately knows about it.
+  * Reduced hallucinations: the AI is instructed to rely solely on verified private notes.
+
