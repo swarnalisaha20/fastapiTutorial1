@@ -21,6 +21,38 @@ router = APIRouter(
 ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
+#define a regular python function (As our AI Tool)
+def get_current_weather(city: str) ->str:
+    city_lower = city.lower()
+    if "mumbai" in city_lower:
+        return "32°C, Sunny and Humid"
+    elif "kolkata" in city_lower:
+        return "29°C, Partly Cloudy"
+    elif "london" in city_lower:
+         return "14°C, Rainy and Windy"
+    else:
+        return f"25°C, Clear skies in {city}"
+
+    
+#using function tool by AI Agent
+@router.post("/ai/agent-chat")
+async def agent_chat(request: schemas.PromptRequest):
+    #1.create a chat session with tool registered
+    #(tool means, register the function in config so that it ca access)
+    chat = ai_client.chats.create(
+        model = 'gemini-3.8-flash',
+        config = types.GenerateContentConfig(
+            tools = [get_current_weather]
+        )
+    )
+
+    #2. send the message using send_message
+    response = chat.send_message(request.message)
+
+    return {"ai_answer": response.text}
+
+
+#get answer bases on stores notes using embedding vector
 @router.post("/ai/ask-notes")
 async def ask_my_notes(query_data: schemas.SearchQuery, db: AsyncSession=Depends(get_db)):
 
