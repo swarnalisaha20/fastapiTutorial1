@@ -88,6 +88,16 @@ async def search_database_notes(keyword: str) -> str:
 
 Scroll down to the bottom of `routers/notes.py` and paste this new endpoint:
 
+> ⚠️ **CRITICAL NOTE ON ASYNC (`aio` & `await`):**
+> Notice that we use **`ai_client.aio.chats.create`** and **`await chat.send_message`** (NOT synchronous `ai_client.chats.create`).
+> 
+> **Why?**
+> Because our database tools (`save_quick_note` and `search_database_notes`) are `async def` coroutines.
+> If you use synchronous `chat.send_message()`, the Gemini SDK will throw:
+> `google.genai.errors.UnsupportedFunctionError: Function save_quick_note is a coroutine function, which is not supported for automatic function calling.`
+> 
+> By switching to **`ai_client.aio.chats.create`** and adding **`await`** before `chat.send_message(...)`, the Gemini SDK natively supports calling your `async def` tools!
+
 ```python
 @router.post("/ai/autonomous-agent")
 async def autonomous_agent(request: schemas.PromptRequest):
@@ -97,8 +107,8 @@ async def autonomous_agent(request: schemas.PromptRequest):
     2. Note creation in PostgreSQL
     3. Note search in PostgreSQL
     """
-    # 1. Register all 3 tools with Gemini!
-    chat = ai_client.chats.create(
+    # 1. Register all 3 tools using the ASYNC client (.aio)
+    chat = ai_client.aio.chats.create(
         model='gemini-3.8-flash',
         config=types.GenerateContentConfig(
             system_instruction=(
@@ -111,8 +121,8 @@ async def autonomous_agent(request: schemas.PromptRequest):
         )
     )
 
-    # 2. Send the message - Gemini will automatically call any tool it needs!
-    response = chat.send_message(request.message)
+    # 2. Send the message with await - Gemini will automatically invoke your async tools!
+    response = await chat.send_message(request.message)
 
     return {"agent_response": response.text}
 ```
