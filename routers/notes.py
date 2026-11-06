@@ -1,7 +1,7 @@
 from fastapi import APIRouter,Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from database import get_db
+from database import get_db,SessionLocal
 import models
 import schemas
 from google import genai
@@ -21,7 +21,7 @@ router = APIRouter(
 ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-#define a regular python function (As our AI Tool)
+#Tool 1: define a regular python function (As our AI Tool)
 def get_current_weather(city: str) ->str:
     city_lower = city.lower()
     if "mumbai" in city_lower:
@@ -32,6 +32,68 @@ def get_current_weather(city: str) ->str:
          return "14°C, Rainy and Windy"
     else:
         return f"25°C, Clear skies in {city}"
+
+
+# Tool 2: Allow AI to save notes
+async def save_quick_note(title: str, content:str)->str:
+    """Saves a new note to the database with a title and content."""
+    async with SessionLocal() as db:
+        #generate embedding vector for the new note
+        embed_resp = ai_client.models.embed_content(
+            model = 'gemini-embedding-001',
+            contents = content
+        )
+        vector = embed_resp.embeddings[0].values
+
+        new_note = models.Note(title=title, content=content, embedding=vector)
+        db.add(new_note)
+        await db.commit()
+        await db.refresh(new_note)
+        return f"Successfully saved note #{new_note.id}: '{new_note.title}'"
+
+
+#Tool 3: Allow AI to search notes in DB
+async def search_database_notes(keyword: str) -> str:
+    """searches the database notes by keyword or meaning."""
+    async with SessionLocal() as db:
+        query = select(models.Note).where(
+            models.Note.title.ilike(f"%{keyword}%") | models.Note.content.ilike(f"%{keyword}%")
+        ).limit(3)
+        result = await db.execute(query)
+        notes = result.scalars().all()
+
+
+        if not notes:
+            return f"No notes found maching '{keyword}'"
+
+        return "\n".join([f"ID: {n.id} | Title: {n.title} | Content: {n.content}" for n in notes])
+
+
+@router.post("/ai/autonomus-agent")
+async def autonomus_agent(request: schemas.PromptRequest):
+    """
+    Autonomous AI Agent with 3 tools:
+    1. Weather lookup
+    2. Note creation in PostgreSQL
+    3. Note search in PostgreSQL
+    """
+
+    #register all 3 tools with Gemini
+    chat = ai_client.aio.chats.create(
+        model = 'gemini-3.8-flash',
+        config = types.GenerateContentConfig(
+            system_instruction = (
+                "You are a smart personal assistant."
+                "You have tools to check weather, save notes to database and search notes."
+                "Use the appropriate tool whenever user's request requires it"
+                "Be friendly and concise."
+            ),
+            tools = [get_current_weather, save_quick_note, search_database_notes]
+        )
+    )
+
+    response = await chat.send_message(request.message)
+    return {"agent_response": response.text}
 
     
 #using function tool by AI Agent

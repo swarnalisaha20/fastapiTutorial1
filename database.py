@@ -4,7 +4,7 @@ from sqlalchemy.orm import declarative_base
 # 1. Your Database URL (Change "postgres:root" to your pgAdmin username and password!)
 # Format: postgresql+asyncpg://user:password@localhost/database_name
 # DATABASE_URL = "postgresql+asyncpg://postgres:root@localhost/fastapi_ai"
-DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost/fastapi_ai"
+DATABASE_URL = "postgresql+asyncpg://postgres:swarnali@localhost/fastapi_ai"
 
 # 2. Create the "Engine" (This does the actual communicating with Postgres)
 engine = create_async_engine(DATABASE_URL, echo=True)
