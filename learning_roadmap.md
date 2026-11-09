@@ -50,5 +50,6 @@
 ### 🔮 Module 6: GenAI Phase 3 (AI Agents & Function Calling) — CURRENT FOCUS
 - [x] Understand Function Calling / Tools
 - [x] Create Python tools the AI can execute autonomously (`get_current_weather`)
-- [ ] Build a fully autonomous GenAI Assistant with multi-tool calling (See `pending_tasks.md` for full step-by-step code!)
+- [x] Build a fully autonomous GenAI Assistant with multi-tool calling (Autonomous Note & Weather Agent!)
+
 

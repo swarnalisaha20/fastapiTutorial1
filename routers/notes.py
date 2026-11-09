@@ -79,6 +79,7 @@ async def autonomus_agent(request: schemas.PromptRequest):
     """
 
     #register all 3 tools with Gemini
+    #initialise a chat session (asynchronus)
     chat = ai_client.aio.chats.create(
         model = 'gemini-3.8-flash',
         config = types.GenerateContentConfig(
