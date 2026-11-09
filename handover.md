@@ -39,10 +39,13 @@ The user has decided to prepare for **Remote & Kolkata Python/GenAI developer jo
 The single most requested skill in interviews right now is **Document RAG (Chat with PDF)**.
 
 ### Immediate Next Tasks for the AI to guide the user through:
+See `pending_tasks.md` for full step-by-step code!
 1. **Step 1:** Install `pypdf` (`pip install pypdf` and update `requirements.txt`).
-2. **Step 2:** Explain how Document RAG works in simple English (Upload PDF ➔ Extract Text ➔ Split into Chunks ➔ Embed Chunks into PostgreSQL ➔ Chat with the PDF).
-3. **Step 3:** Create a file upload endpoint in FastAPI: `POST /notes/upload-pdf` using `UploadFile` (comparing it to Laravel's `$request->file('pdf')`).
-4. **Step 4:** Query the PDF contents using vector similarity search!
+2. **Step 2:** Add `DocumentChunk` model in `models.py` for storing document chunks and embeddings.
+3. **Step 3:** Add `POST /notes/upload-pdf` endpoint in `routers/notes.py` using `UploadFile` (like Laravel's `$request->file()`).
+4. **Step 4:** Add `POST /notes/ask-pdf` endpoint in `routers/notes.py` to search document embeddings and generate answers.
+5. **Step 5:** Test uploading and querying a real PDF in Swagger UI!
+
 
 ---
 

@@ -1,166 +1,169 @@
-# Pending Task: Final Capstone Project (Autonomous AI Assistant)
+# 📋 Pending Task: Document RAG — "Chat with Uploaded PDF"
 
 ***⚠️ DIRECTIVE FOR ANY AI ASSISTANT ON THE OFFICE COMPUTER ⚠️***
-**The user is a Laravel developer learning FastAPI + GenAI. Do NOT modify the code or DB automatically.**
-**The user wants to manually type/edit the code themselves on this machine. Guide them step-by-step through the instructions written below.**
+**The user is a Laravel developer transitioning into a Full-Stack Python GenAI Developer.**
+**DO NOT modify the code or DB automatically. The user types/edits the code themselves.**
+**Guide them step-by-step in simple English with Laravel analogies.**
 
 ---
 
-## 📦 Office Computer Setup (Database & Code)
+## 🎯 Goal: Build a "Chat with My Uploaded PDF" API
 
-### How to Restore the Exact Same DB & Notes on the Office Computer:
-1. Open pgAdmin at the office.
-2. Create an empty database named **`fastapi_ai`**.
-3. Open Query Tool on `fastapi_ai` and ensure `vector` is enabled:
-   ```sql
-   CREATE EXTENSION IF NOT EXISTS vector;
-   ```
-4. Open Query Tool, click the **Open File** icon (folder icon in pgAdmin toolbar), select **`database_backup.sql`** from your cloned folder, and click **Execute (F5)**!
-5. All your tables, notes, and 3,072-dimension vector embeddings will be restored 100%!
-
----
-
-## 🎯 What We Are Building: The Capstone AI Assistant
-
-We are creating an **Autonomous AI Agent** that has **three tools**:
-1. `get_current_weather(city: str)` ➔ Returns live weather data.
-2. `save_quick_note(title: str, content: str)` ➔ Saves a note directly to PostgreSQL database.
-3. `search_database_notes(keyword: str)` ➔ Searches PostgreSQL notes table for relevant records.
-
-When a user chats with `/notes/ai/autonomous-agent`:
-* If they ask about the weather ➔ AI automatically calls `get_current_weather`.
-* If they say *"Remember that I have a doctor appointment on Friday at 4 PM"* ➔ AI automatically creates a title and calls `save_quick_note` to insert it into PostgreSQL!
-* If they ask *"What notes do I have about meetings?"* ➔ AI calls `search_database_notes` and answers from the DB.
-* If they just say *"Hello!"* ➔ AI answers normally without calling any tools.
+We are creating two new endpoints:
+1. `POST /notes/upload-pdf` ➔ User uploads a PDF file. The API reads the text, splits it into paragraph chunks, generates 3,072 vector embeddings, and stores them in PostgreSQL!
+2. `POST /notes/ask-pdf` ➔ User asks any question about the uploaded document, and the AI answers based strictly on the PDF!
 
 ---
 
 ## 📝 Step-by-Step Implementation Guide
 
-Follow these 4 steps in order:
+Follow these steps in order when you sit at your office computer:
 
 ---
 
-### Step 1: Add Database Helper Functions in `routers/notes.py`
+### Step 1: Install `pypdf`
+Open PowerShell (with your `venv` active) and install the PDF reader:
+```powershell
+pip install pypdf
+```
 
-Open `routers/notes.py`. Right below your existing `get_current_weather` function (around line 35), paste these two database helper tools:
+---
+
+### Step 2: Create a New Model for Document Chunks in `models.py`
+Open `models.py`. At the bottom, add a new table model to store pages/chunks of uploaded documents:
 
 ```python
-from database import SessionLocal
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
 
-# Tool 2: Allows the AI to save notes directly to PostgreSQL
-async def save_quick_note(title: str, content: str) -> str:
-    """Saves a new note to the database with a title and content."""
-    async with SessionLocal() as db:
-        # Generate embedding vector for the new note
-        embed_resp = ai_client.models.embed_content(
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String(255), index=True)
+    chunk_text = Column(Text)
+    embedding = Column(Vector(3072), nullable=True)
+```
+
+In pgAdmin, create the table directly or let FastAPI lifespan create it:
+```sql
+CREATE TABLE IF NOT EXISTS document_chunks (
+    id SERIAL PRIMARY KEY,
+    filename VARCHAR(255),
+    chunk_text TEXT,
+    embedding vector(3072)
+);
+```
+
+---
+
+### Step 3: Add the PDF Upload Route in `routers/notes.py`
+Open `routers/notes.py`. Add these imports at the top:
+```python
+from fastapi import UploadFile, File
+from pypdf import PdfReader
+import io
+```
+
+*(Laravel analogy: `UploadFile` is just like Laravel's `$request->file('document')`!)*
+
+Now add the upload endpoint to `routers/notes.py`:
+
+```python
+@router.post("/upload-pdf")
+async def upload_pdf(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Uploads a PDF, extracts text, chunks it, and saves embeddings into PostgreSQL."""
+    
+    # 1. Read the uploaded PDF file in memory
+    contents = await file.read()
+    pdf_reader = PdfReader(io.BytesIO(contents))
+    
+    saved_chunks_count = 0
+
+    # 2. Loop through each page of the PDF
+    for page_num, page in enumerate(pdf_reader.pages):
+        text = page.extract_text()
+        if not text or not text.strip():
+            continue
+            
+        # 3. Generate vector embedding for this page/chunk
+        embed_resp = await ai_client.aio.models.embed_content(
             model='gemini-embedding-001',
-            contents=content
+            contents=text
         )
         vector = embed_resp.embeddings[0].values
         
-        new_note = models.Note(title=title, content=content, embedding=vector)
-        db.add(new_note)
-        await db.commit()
-        await db.refresh(new_note)
-        return f"Successfully saved note #{new_note.id}: '{new_note.title}'"
-
-
-# Tool 3: Allows the AI to search database notes
-async def search_database_notes(keyword: str) -> str:
-    """Searches the database notes by keyword or meaning."""
-    async with SessionLocal() as db:
-        query = select(models.Note).where(
-            models.Note.title.ilike(f"%{keyword}%") | models.Note.content.ilike(f"%{keyword}%")
-        ).limit(3)
-        result = await db.execute(query)
-        notes = result.scalars().all()
+        # 4. Save into document_chunks table
+        chunk_entry = models.DocumentChunk(
+            filename=file.filename,
+            chunk_text=text,
+            embedding=vector
+        )
+        db.add(chunk_entry)
+        saved_chunks_count += 1
         
-        if not notes:
-            return f"No notes found matching '{keyword}'."
-        
-        return "\n".join([f"ID: {n.id} | Title: {n.title} | Content: {n.content}" for n in notes])
+    await db.commit()
+    
+    return {
+        "message": f"Successfully processed {file.filename}!",
+        "pages_indexed": saved_chunks_count
+    }
 ```
 
 ---
 
-### Step 2: Add the Autonomous Agent Route in `routers/notes.py`
-
-Scroll down to the bottom of `routers/notes.py` and paste this new endpoint:
+### Step 4: Add the "Ask PDF" Endpoint in `routers/notes.py`
+Add the question-answering endpoint right below the upload route:
 
 ```python
-@router.post("/ai/autonomous-agent")
-async def autonomous_agent(request: schemas.PromptRequest):
-    """
-    Autonomous AI Agent with 3 tools:
-    1. Weather lookup
-    2. Note creation in PostgreSQL
-    3. Note search in PostgreSQL
-    """
-    # 1. Register all 3 tools with Gemini!
-    chat = ai_client.chats.create(
-        model='gemini-3.8-flash',
-        config=types.GenerateContentConfig(
-            system_instruction=(
-                "You are a smart personal assistant. "
-                "You have tools to check weather, save notes to the database, and search notes. "
-                "Use the appropriate tool whenever the user's request requires it. "
-                "Be friendly and concise."
-            ),
-            tools=[get_current_weather, save_quick_note, search_database_notes]
-        )
+@router.post("/ask-pdf")
+async def ask_pdf(query_data: schemas.SearchQuery, db: AsyncSession = Depends(get_db)):
+    """Asks questions specifically to your uploaded PDF documents using vector search."""
+    
+    # 1. Turn user question into 3,072 numbers
+    question_embed = await ai_client.aio.models.embed_content(
+        model='gemini-embedding-001',
+        contents=query_data.question
     )
+    q_vector = question_embed.embeddings[0].values
+    
+    # 2. Vector search in document_chunks table for top 2 relevant pages
+    query = (
+        select(models.DocumentChunk)
+        .where(models.DocumentChunk.embedding.isnot(None))
+        .order_by(models.DocumentChunk.embedding.cosine_distance(q_vector))
+        .limit(2)
+    )
+    result = await db.execute(query)
+    matching_chunks = result.scalars().all()
+    
+    if not matching_chunks:
+        return {"answer": "No relevant information found in uploaded documents."}
+        
+    context = "\n\n---\n\n".join([f"Source ({c.filename}):\n{c.chunk_text}" for c in matching_chunks])
+    
+    # 3. Ask Gemini to answer based strictly on the PDF content
+    prompt = f"""
+You are an expert document assistant. Answer the user's question using ONLY the following excerpts from their uploaded PDF:
 
-    # 2. Send the message - Gemini will automatically call any tool it needs!
-    response = chat.send_message(request.message)
+--- DOCUMENT EXCERPTS ---
+{context}
+-------------------------
 
-    return {"agent_response": response.text}
+Question: {query_data.question}
+"""
+    response = await ai_client.aio.models.generate_content(
+        model='gemini-3.8-flash',
+        contents=prompt
+    )
+    
+    return {
+        "question": query_data.question,
+        "sources": [c.filename for c in matching_chunks],
+        "ai_answer": response.text.strip()
+    }
 ```
 
 ---
 
-### Step 3: Test the 3 Autonomous Scenarios in Swagger UI (`/docs`)
-
-Start the server:
-```powershell
-uvicorn main:app --reload
-```
-
-Go to `http://127.0.0.1:8000/docs` and open **`POST /notes/ai/autonomous-agent`**:
-
-#### Test Scenario A: Weather Tool
-Send:
-```json
-{
-  "message": "What is the weather in London right now?"
-}
-```
-*Expected Result:* AI calls `get_current_weather(city='london')` and tells you it is 14°C, Rainy and Windy.
-
-#### Test Scenario B: Note Creation Tool
-Send:
-```json
-{
-  "message": "Please save a note for me: I need to buy milk, eggs, and coffee from the supermarket on Sunday."
-}
-```
-*Expected Result:* AI creates a title like "Grocery List" and calls `save_quick_note`. Check pgAdmin or `GET /notes/` — the note will be in your database!
-
-#### Test Scenario C: Note Search Tool
-Send:
-```json
-{
-  "message": "Do I have any notes about grocery or shopping?"
-}
-```
-*Expected Result:* AI calls `search_database_notes(keyword='grocery')` and summarizes the note it found in your database!
-
----
-
-### Step 4: Final Git Sync
-Once all 3 scenarios work in Swagger:
-```powershell
-git add .
-git commit -m "Completed Capstone Autonomous Agent with multi-tool calling"
-git push
-```
+### Step 5: Test in Swagger UI (`/docs`)
+1. Open `http://127.0.0.1:8000/docs`.
+2. Find `POST /notes/upload-pdf`. Click **Try it out**, choose any `.pdf` on your machine, and click **Execute**.
+3. Find `POST /notes/ask-pdf`. Type a question about the PDF you just uploaded and click **Execute**!
