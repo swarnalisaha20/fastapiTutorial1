@@ -15,4 +15,4 @@
 ## Phase 3: AI Agents & Tools (Function Calling)
 - [x] Learn Function Calling (Giving the AI permission to trigger Python functions).
 - [x] Build a tool (e.g., an AI that can check the real-time weather or search the internet).
-- [ ] Combine everything: Build a fully autonomous AI Assistant!
+- [x] Combine everything: Build a fully autonomous AI Assistant!
