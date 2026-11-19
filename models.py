@@ -13,3 +13,12 @@ class Note(Base):
     #after installing vector we added this column of type vector
     #for Gemini embedding!
     embedding = Column(Vector(3072), nullable=True)
+
+
+class DocumentChunk(Base):
+    __tablename__ = "document_chunks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String(255), index=True)
+    chunk_text = Column(Text)
+    embedding = Column(Vector(3072), nullable=True)

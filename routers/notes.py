@@ -8,6 +8,9 @@ from google import genai
 import os
 from google.genai import types
 from dotenv import load_dotenv
+from fastapi import UploadFile, File
+from pypdf import PdfReader
+import io
 load_dotenv()
 
 
@@ -19,6 +22,17 @@ router = APIRouter(
 
 # AI Connection
 ai_client=genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+
+
+@router.post("/upload-pdf")
+async def upload_pdf(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+    """Uploads a PDF, extracts text, chunks it, and saves embeddings into PostgreSQL."""
+    
+    # 1. Read the uploaded PDF bytes into memory (like file_get_contents in PHP)
+    contents = await file.read()
+    pdf_reader =  PdfReader(io.BytesIO(contents))
+
+    saved_chunks_count = 0
 
 
 #Tool 1: define a regular python function (As our AI Tool)
